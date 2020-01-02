@@ -3,5 +3,5 @@
 
 Goals:
 1. Implement generalized transforms for Self supervised Learning
-2. Implement Memory Bank for storing image representations
+2. Implement Memory Bank for storing image representations - Done
 3. Implement code to adapt to any kind of Pytorch nn.Module Class
