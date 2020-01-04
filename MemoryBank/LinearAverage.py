@@ -7,7 +7,6 @@ class LinearAverageOp(Function):
     @staticmethod
     def forward(self, features, transformed_features, indices, memory, params):
         T = params[0].item()
-        batchSize = features.size(0)
 
         # inner product
         out_features = torch.mm(features.data, memory.t())
@@ -24,7 +23,6 @@ class LinearAverageOp(Function):
     @staticmethod
     def backward(self, gradOutput):
         features, transformed_features, memory, indices, params = self.saved_tensors
-        batchSize = gradOutput.size(0)
         T = params[0].item()
         momentum = params[1].item()
         
@@ -52,7 +50,7 @@ class LinearAverage(nn.Module):
         stdv = 1 / math.sqrt(inputSize)
         self.nLem = outputSize
 
-        self.register_buffer('params',torch.tensor([T, momentum]));
+        self.register_buffer('params',torch.tensor([T, momentum]))
         stdv = 1. / math.sqrt(inputSize/3)
         self.register_buffer('memory', torch.rand(outputSize, inputSize).mul_(2*stdv).add_(-stdv))
 
