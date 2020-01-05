@@ -9,16 +9,16 @@ class JigSaw(object):
     
     def __call__(self, img):
         assert isinstance(img, torch.Tensor) 
-        image = img
-        self.patch_size_1 = image.size[1] // self.n_patches[0] 
-        self.patch_size_2 = image.size[0] // self.n_patches[1] 
+        transformed_image = img
+        self.patch_size_1 = transformed_image.size[1] // self.n_patches[0] 
+        self.patch_size_2 = transformed_image.size[0] // self.n_patches[1] 
 
-        image = image.unfold(1, self.patch_size_1, self.patch_size_1).unfold(2, self.patch_size_2, self.patch_size_2)
-        image = image.permute([1, 2, 0, 3, 4]).contiguous()
-        image = image.view([-1, image.shape[2], image.shape[3], image.shape[4]])
-        rand_perm = torch.randperm(image.shape[0])
-        image = image[rand_perm]
-        return img, image, rand_perm
+        transformed_image = transformed_image.unfold(1, self.patch_size_1, self.patch_size_1).unfold(2, self.patch_size_2, self.patch_size_2)
+        transformed_image = transformed_image.permute([1, 2, 0, 3, 4]).contiguous()
+        transformed_image = transformed_image.view([-1, transformed_image.shape[2], transformed_image.shape[3], transformed_image.shape[4]])
+        rand_perm = torch.randperm(transformed_image.shape[0])
+        transformed_image = transformed_image[rand_perm]
+        return img, transformed_image, rand_perm
 
 class Rotate(object):
     def __init__(self, num_positions):

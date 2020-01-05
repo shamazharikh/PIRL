@@ -1,11 +1,11 @@
-from transforms import * 
+from transforms import JigSaw, Rotate
 from PIL import Image
 import torchvision
 
 def test_jigsaw():
     image = Image.open("cat.jpg").convert("RGB")
     transform = JigSaw((4, 3))
-    image_t, order = transform(image)
+    image, transformed_image, order = transform(image)
     print(image_t.shape)
     for  i in range(image_t.shape[0]):
         torchvision.utils.save_image(image_t[i], "cat_jigsaw_{}.png".format(i))

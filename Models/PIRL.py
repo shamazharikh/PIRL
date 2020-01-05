@@ -18,7 +18,7 @@ class PIRLModel(nn.Module):
         self.ILG = IntermediateLayerGetter(self.net, return_layers=self.layer_names)
         fake_data = torch.rand(2,3,224,224)
         _ = net(fake_data)
-        out_size = ILG.output_sizes[layer_names[0]]
+        out_size = self.ILG.output_sizes[layer_names[0]]
         self.GeneralRepresentation = GenericTask(out_size, encoding_size)
         self.Jigsaw = JigsawTask(out_size, encoding_size, jigsaw_size)
     
@@ -30,7 +30,7 @@ class PIRLModel(nn.Module):
         _ = self.net(transformed_image)
         image_activations = self.ILG.activations[self.layer_names[0]]
         transformed_image_features = self.Jigsaw(image_activations)
-        
+
         return image_features, transformed_image_features
 
 
