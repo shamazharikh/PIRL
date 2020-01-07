@@ -65,6 +65,8 @@ parser.add_argument('--nce-t', default=0.07, type=float,
                     metavar='T', help='temperature parameter for softmax')
 parser.add_argument('--nce-m', default=0.5, type=float,
                     help='momentum for non-parametric updates')
+parser.add_argument('--lambda', default=0.1, type=float,
+                    help='weight of NCE for transformed input')
 parser.add_argument('--iter_size', default=1, type=int,
                     help='caffe style iter size')
 
@@ -85,7 +87,7 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
 
         # compute output
         image_features, transformed_image_features = model(image, transform_image)
-        output = memorybank(image_features, transformed_image_features, index)
+        transformed_output, output = memorybank(image_features, transformed_image_features, index)
         loss = criterion(output, index) / args.iter_size
 
         loss.backward()
@@ -187,8 +189,8 @@ def main():
 
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                     std=[1.0, 1.0, 1.0])
 
     train_dataset = datasets.ImageFolderInstance(
         traindir,
@@ -197,8 +199,9 @@ def main():
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
-            JigSaw((3, 3)),
+            Rotate(return_image=False),
             normalize,
+            JigSaw((3, 3))
         ]))
     
     if args.distributed:
