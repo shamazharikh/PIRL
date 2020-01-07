@@ -65,6 +65,8 @@ parser.add_argument('--nce-t', default=0.07, type=float,
                     metavar='T', help='temperature parameter for softmax')
 parser.add_argument('--nce-m', default=0.5, type=float,
                     help='momentum for non-parametric updates')
+parser.add_argument('--lambda', default=0.1, type=float,
+                    help='weight of NCE for transformed input')
 parser.add_argument('--iter_size', default=1, type=int,
                     help='caffe style iter size')
 
@@ -85,7 +87,7 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
 
         # compute output
         image_features, transformed_image_features = model(image, transform_image)
-        output = memorybank(image_features, transformed_image_features, index)
+        transformed_output, output = memorybank(image_features, transformed_image_features, index)
         loss = criterion(output, index) / args.iter_size
 
         loss.backward()
