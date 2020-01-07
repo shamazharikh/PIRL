@@ -187,8 +187,8 @@ def main():
 
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                     std=[1.0, 1.0, 1.0])
 
     train_dataset = datasets.ImageFolderInstance(
         traindir,
@@ -197,8 +197,9 @@ def main():
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
-            JigSaw((3, 3)),
+            Rotate(return_image=False),
             normalize,
+            JigSaw((3, 3))
         ]))
     
     if args.distributed:

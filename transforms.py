@@ -4,7 +4,7 @@ import torchvision.transforms.functional as F
 from PIL import Image
 
 class JigSaw(object):
-    def __init__(self, n_patches, return_labels=True):
+    def __init__(self, n_patches):
         self.n_patches = n_patches
     
     def __call__(self, img):
@@ -21,8 +21,9 @@ class JigSaw(object):
         return img, transformed_image, rand_perm
 
 class Rotate(object):
-    def __init__(self, num_positions):
+    def __init__(self, num_positions, return_image=False):
         self.degrees = torch.arange(num_positions) * (360.0 / num_positions) 
+        self.return_image = return_image
 
     def __call__(self, img):
         image = img
@@ -30,7 +31,9 @@ class Rotate(object):
         angle = self.degrees[ind]
         if angle == 0. :
             return img, image, ind
-        return img, F.rotate(image, angle), ind
+        if self.return_image:
+            return img, F.rotate(image, angle), ind
+        return F.rotate(image, angle), ind
 
 
 
