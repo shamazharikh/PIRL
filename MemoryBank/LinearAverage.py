@@ -15,7 +15,9 @@ class LinearAverageOp(Function):
         # inner product
         out_trans_features = torch.mm(transformed_features.data, memory.t())
         out_trans_features.div_(T) # batchSize * N
-                
+        
+        # inner product for input similarity
+        out_similarity = torch.mm(features.data, transformed_features.data.t())
         self.save_for_backward(features, transformed_features, memory, indices, params)
 
         return out_trans_features, out_features
