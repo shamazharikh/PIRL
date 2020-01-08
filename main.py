@@ -13,19 +13,30 @@ import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
+import torchvision.models as models
 
 import datasets
 from transforms import *
-from Models.PIRL import PIRLModel
+from Models.PIRL import PIRLModel, PIRLLoss
 from utils import AverageMeter
 from MemoryBank.NCEAverage import NCEAverage
 from MemoryBank.LinearAverage import LinearAverage
 from MemoryBank.NCECriterion import NCECriterion
 
+
+model_names = sorted(name for name in models.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(models.__dict__[name]))
+
 parser = argparse.ArgumentParser(description='PIRL CIFAR100 Training')
 
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
+parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
+                    choices=model_names,
+                    help='model architecture: ' +
+                        ' | '.join(model_names) +
+                        ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
@@ -80,7 +91,7 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
 
     end = time.time()
     optimizer.zero_grad()
-    for i, (image, transform_image, index) in enumerate(train_loader):
+    for i, (img, transformed_img, index) in enumerate(train_loader):
         data_time.update(time.time() - end)
         index = index.cuda(async=True)
 
@@ -159,26 +170,10 @@ def main():
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
+        model = PIRLModel(args.arch)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](low_dim=args.low_dim)
-
-    if not args.distributed:
-        if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
-            model.features = torch.nn.DataParallel(model.features)
-            model.cuda()
-        else:
-            model = torch.nn.DataParallel(model).cuda()
-    else:
-        model.cuda()
-        model = torch.nn.parallel.DistributedDataParallel(model)
-    
-    # create model
-    if args.pretrained:
-        model = PIRLModel(pretrained=True)
-    else:
-        model = PIRLModel()
+        model = PIRLModel(args.arch, pretrained=False)
     
     if not args.distributed:
         model = torch.nn.DataParallel(model).cuda()
@@ -229,7 +224,7 @@ def main():
     #     criterion = NCECriterion(ndata).cuda()
     # else:
     memorybank = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = PIRLLoss.cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
