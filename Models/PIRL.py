@@ -36,13 +36,13 @@ class PIRLModel(nn.Module):
             return image_features
 
 class PIRLLoss(nn.Module):
-    def __init__(self, _lambda):
-        self._lambda = _lambda
+    def __init__(self, loss_lambda=0.9):
+        self.loss_lambda = loss_lambda
         self.11 = torch.nn.CrossEntropyLoss()
         self.l2 = torch.nn.CrossEntropyLoss()
     
     def forward(self, transformed_output, output, index):
-        return self._lambda * self.l1(transformed_output, index) + \
-            (1 - self._lambda) * self.l2(output, index)
+        return self.loss_lambda * self.l1(transformed_output, index) + \
+            (1 - self.loss_lambda) * self.l2(output, index)
         
     

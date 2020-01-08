@@ -60,6 +60,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
 parser.add_argument('--test-only', action='store_true', help='test only')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('--recompute', action='store_true', 
+                    help='Recompute memory bank for validation')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
 parser.add_argument('--world-size', default=1, type=int,
@@ -76,12 +78,12 @@ parser.add_argument('--nce-t', default=0.07, type=float,
                     metavar='T', help='temperature parameter for softmax')
 parser.add_argument('--nce-m', default=0.5, type=float,
                     help='momentum for non-parametric updates')
-parser.add_argument('--lambda', default=0.1, type=float,
+parser.add_argument('--loss_lambda', default=0.1, type=float,
                     help='weight of NCE for transformed input')
 parser.add_argument('--iter_size', default=1, type=int,
                     help='caffe style iter size')
 
-def train(train_loader, model, memorybank, criterion, optimizer, epoch):
+def train(epoch, model, memorybank, criterion, trainloader, optimizer):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()   
@@ -120,8 +122,8 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
 
-def validate(epoch, net, memorybank, trainloader, valloader, recompute_memory=0):
-    net.eval()
+def validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=0):
+    model.eval()
     net_time = AverageMeter()
     cls_time = AverageMeter()
     losses = AverageMeter()
@@ -136,31 +138,25 @@ def validate(epoch, net, memorybank, trainloader, valloader, recompute_memory=0)
         for batch_idx, (image, transformed_image, index) in enumerate(temploader):
             index = index.cuda(async=True)
             batchSize = i.size(0)
-            features = net(images)
+            features = model(images)
             trainFeatures[:, batch_idx*batchSize:batch_idx*batchSize+batchSize] = features.data.t()
         trainloader.dataset.transform = transform_bak
     
     end = time.time()
     with torch.no_grad():
-        for batch_idx, (image, transformed_image, indexes) in enumerate(testloader):
-            targets = targets.cuda(async=True)
-            batchSize = inputs.size(0)
-            features, transformed_features = net(inputs, transformed_image)
-            
+        for batch_idx, (images, transformed_images, indexes) in enumerate(testloader):
+            indexes = indexes.cuda(async=True)
+            batchSize = images.size(0)
+            targets = torch.zeros(batchSize, dtype=torch.long)
+            features, transformed_features = model(images, transformed_images)
+            transformed_output, output, output_similarity = memorybank(features, transformed_features)
+            similarity_vectors = torch.cat([output_similarity, transformed_output], dim=-1)
+            val_loss = criterion(similarity_vectors, targets)
             net_time.update(time.time() - end)
             end = time.time()
 
-            dist = torch.mm(features, trainFeatures)
-
-            yd, yi = dist.topk(1, dim=1, largest=True, sorted=True)
-            candidates = trainLabels.view(1,-1).expand(batchSize, -1)
-            retrieval = torch.gather(candidates, 1, yi)
-
-            retrieval = retrieval.narrow(1, 0, 1).clone().view(-1)
-            yd = yd.narrow(1, 0, 1)
-
             total += targets.size(0)
-            correct += retrieval.eq(targets.data).sum().item()
+            correct += similarity_vectors.argmax(dim=-1).eq(targets.data).sum().item()
             
             cls_time.update(time.time() - end)
             end = time.time()
@@ -277,7 +273,7 @@ def main():
     #     criterion = NCECriterion(ndata).cuda()
     # else:
     memorybank = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
-    criterion = PIRLLoss.cuda()
+    criterion = PIRLLoss(loss_lambda=args.loss_lambda).cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -310,14 +306,14 @@ def main():
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, memorybank, criterion, optimizer, epoch)
+        train(epoch, model, memorybank, criterion, trainloader, optimizer)
 
-        # # evaluate on validation set
-        # prec1 = NN(epoch, model, memorybank, train_loader, val_loader)
+        # evaluate on validation set
+        accuracy = validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=args.recompute)
 
         # remember best prec@1 and save checkpoint
-        # is_best = prec1 > best_prec1
-        # best_prec1 = max(prec1, best_prec1)
+        # is_best = accuracy > best_accuracy
+        # best_prec1 = max(accuracy, best_accuracy)
         if epoch % args.save_freq == 0:
             save_checkpoint({
                 'epoch': epoch + 1,
