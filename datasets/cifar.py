@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 from PIL import Image
 import torchvision.datasets as datasets
 import torch.utils.data as data
@@ -17,12 +18,9 @@ class CIFAR10Instance(datasets.CIFAR10):
         img = Image.fromarray(img)
 
         if self.transform is not None:
-            img = self.transform(img)
+            img, transformed_image, _ = self.transform(img)
+        return img, transformed_img, index 
 
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return img, target, index
 
 class CIFAR100Instance(CIFAR10Instance):
     """CIFAR100Instance Dataset.

@@ -13,9 +13,7 @@ class ImageFolderInstance(datasets.ImageFolder):
         path, target = self.imgs[index]
         img = self.loader(path)
         if self.transform is not None:
-            img = self.transform(img)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
+            img, transformed_image, _ = self.transform(img)
+        return img, transformed_img, index 
 
-        return img, target, index
 
