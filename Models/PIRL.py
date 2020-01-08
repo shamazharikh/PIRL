@@ -22,15 +22,16 @@ class PIRLModel(nn.Module):
         self.GeneralRepresentation = GenericTask(out_size, encoding_size)
         self.Jigsaw = JigsawTask(out_size, encoding_size, jigsaw_size)
     
-    def forward(self, image, transformed_image):
+    def forward(self, image, transformed_image=None):
         _ = self.net(image)
         image_activations = self.ILG.activations[self.layer_names[0]]
         image_features = self.GeneralRepresentation(image_activations)
         
-        _ = self.net(transformed_image)
-        image_activations = self.ILG.activations[self.layer_names[0]]
-        transformed_image_features = self.Jigsaw(image_activations)
-
-        return image_features, transformed_image_features
-
+        if transformed_image:
+            _ = self.net(transformed_image)
+            image_activations = self.ILG.activations[self.layer_names[0]]
+            transformed_image_features = self.Jigsaw(image_activations)
+            return image_features, transformed_image_features
+        else:
+            return image_features
 

@@ -120,6 +120,59 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
 
+def validate(epoch, net, memorybank, trainloader, valloader, recompute_memory=0):
+    net.eval()
+    net_time = AverageMeter()
+    cls_time = AverageMeter()
+    losses = AverageMeter()
+    correct = 0.
+    total = 0
+    testsize = testloader.dataset.__len__()
+    trainFeatures = memorybank.memory.t()
+    if recompute_memory:
+        transform_backup = trainloader.dataset.transform
+        trainloader.dataset.transform = testloader.dataset.transform
+        temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
+        for batch_idx, (image, transformed_image, index) in enumerate(temploader):
+            index = index.cuda(async=True)
+            batchSize = i.size(0)
+            features = net(images)
+            trainFeatures[:, batch_idx*batchSize:batch_idx*batchSize+batchSize] = features.data.t()
+        trainloader.dataset.transform = transform_bak
+    
+    end = time.time()
+    with torch.no_grad():
+        for batch_idx, (image, transformed_image, indexes) in enumerate(testloader):
+            targets = targets.cuda(async=True)
+            batchSize = inputs.size(0)
+            features, transformed_features = net(inputs, transformed_image)
+            
+            net_time.update(time.time() - end)
+            end = time.time()
+
+            dist = torch.mm(features, trainFeatures)
+
+            yd, yi = dist.topk(1, dim=1, largest=True, sorted=True)
+            candidates = trainLabels.view(1,-1).expand(batchSize, -1)
+            retrieval = torch.gather(candidates, 1, yi)
+
+            retrieval = retrieval.narrow(1, 0, 1).clone().view(-1)
+            yd = yd.narrow(1, 0, 1)
+
+            total += targets.size(0)
+            correct += retrieval.eq(targets.data).sum().item()
+            
+            cls_time.update(time.time() - end)
+            end = time.time()
+
+            print('Test [{}/{}]\t'
+                  'Net Time {net_time.val:.3f} ({net_time.avg:.3f})\t'
+                  'Cls Time {cls_time.val:.3f} ({cls_time.avg:.3f})\t'
+                  'Top1: {:.2f}'.format(
+                  total, testsize, correct*100./total, net_time=net_time, cls_time=cls_time))
+
+    return correct/total
+
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
