@@ -82,13 +82,12 @@ def train(train_loader, model, memorybank, criterion, optimizer, epoch):
     optimizer.zero_grad()
     for i, (image, transform_image, index) in enumerate(train_loader):
         data_time.update(time.time() - end)
-
         index = index.cuda(async=True)
 
         # compute output
         image_features, transformed_image_features = model(image, transform_image)
-        transformed_output, output = memorybank(image_features, transformed_image_features, index)
-        loss = criterion(output, index) / args.iter_size
+        transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
+        loss = (criterion(output, index) + criterion(transformed_output, index)) / args.iter_size
 
         loss.backward()
         # measure accuracy and record loss
