@@ -95,7 +95,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
     optimizer.zero_grad()
     for i, (img, transformed_img, index) in enumerate(train_loader):
         data_time.update(time.time() - end)
-        index = index.cuda(async=True)
+        index = index.cuda(non_blocking=True)
 
         # compute output
         image_features, transformed_image_features = model(image, transform_image)
@@ -136,7 +136,7 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
         trainloader.dataset.transform = testloader.dataset.transform
         temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
         for batch_idx, (image, transformed_image, index) in enumerate(temploader):
-            index = index.cuda(async=True)
+            index = index.cuda(non_blocking=True)
             batchSize = i.size(0)
             features = model(images)
             trainFeatures[:, batch_idx*batchSize:batch_idx*batchSize+batchSize] = features.data.t()
@@ -145,7 +145,7 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
     end = time.time()
     with torch.no_grad():
         for batch_idx, (images, transformed_images, indexes) in enumerate(testloader):
-            indexes = indexes.cuda(async=True)
+            indexes = indexes.cuda(non_blocking=True)
             batchSize = images.size(0)
             targets = torch.zeros(batchSize, dtype=torch.long)
             features, transformed_features = model(images, transformed_images)
@@ -235,7 +235,7 @@ def main():
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                      std=[1.0, 1.0, 1.0])
 
-    train_dataset = datasets.ImageFolderInstance(
+    train_dataset = datasets.MNISTInstance(
         traindir,
         transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.2,1.)),
@@ -257,7 +257,7 @@ def main():
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolderInstance(valdir, transforms.Compose([
+        datasets.MNISTInstance(valdir, transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             JigSaw((3, 3)),
