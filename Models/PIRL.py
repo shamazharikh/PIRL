@@ -21,8 +21,6 @@ class PIRLModel(nn.Module):
         self.ILG = IntermediateLayerGetter(self.net, return_layers=self.layer_names)
         fake_data = torch.rand(2,3,224,224)
         _ = self.net(fake_data)
-        print (self.ILG.output_sizes)
-        print (self.layer_names)
         out_size = self.ILG.output_sizes[self.layer_names[0]]
         self.GeneralRepresentation = GenericTask(out_size, encoding_size)
         self.Jigsaw = JigsawTask(out_size, encoding_size, jigsaw_size)
@@ -42,6 +40,7 @@ class PIRLModel(nn.Module):
 
 class PIRLLoss(nn.Module):
     def __init__(self, loss_lambda=0.9):
+        super(PIRLLoss, self).__init__()
         self.loss_lambda = loss_lambda
         self.l1 = torch.nn.CrossEntropyLoss()
         self.l2 = torch.nn.CrossEntropyLoss()

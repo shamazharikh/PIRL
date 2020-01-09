@@ -31,6 +31,8 @@ parser = argparse.ArgumentParser(description='PIRL CIFAR100 Training')
 
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
+parser.add_argument('--download', action='store_true', 
+                    help='Flag to download data')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -71,6 +73,10 @@ parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
 parser.add_argument('--low-dim', default=128, type=int,
                     metavar='D', help='feature dimension')
+parser.add_argument('--nce-t', default=0.07, type=float, 
+                    metavar='T', help='temperature parameter for softmax')
+parser.add_argument('--nce-m', default=0.5, type=float,
+                    help='momentum for non-parametric updates')
 parser.add_argument('--loss_lambda', default=0.1, type=float,
                     help='weight of NCE for transformed input')
 parser.add_argument('--iter_size', default=1, type=int,
