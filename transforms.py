@@ -21,7 +21,7 @@ class JigSaw(object):
         return img, transformed_image, rand_perm
         
 class Rotate(object):
-    def __init__(self, num_positions, return_image=False):
+    def __init__(self, num_positions=4, return_image=False):
         self.degrees = torch.arange(num_positions) * (360.0 / num_positions) 
         self.return_image = return_image
 

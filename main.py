@@ -19,9 +19,8 @@ import datasets
 from transforms import *
 from Models.PIRL import PIRLModel, PIRLLoss
 from utils import AverageMeter
-from MemoryBank.NCEAverage import NCEAverage
 from MemoryBank.LinearAverage import LinearAverage
-from MemoryBank.NCECriterion import NCECriterion
+
 
 
 model_names = sorted(name for name in models.__dict__
