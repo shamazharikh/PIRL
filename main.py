@@ -250,7 +250,7 @@ def main():
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_dataset = datasets.MNISTInstance(
-        root=data_dir, 
+        root=args.data, 
         download=True,
         transform=transforms.Compose([
             transforms.Resize(256),
