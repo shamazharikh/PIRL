@@ -25,7 +25,7 @@ class LinearAverageOp(Function):
 
     @staticmethod
     def backward(self, gradOutput):
-        features, transformed_features, memory, indices, params = self.saved_tensors
+        features, _, memory, indices, params = self.saved_tensors
         T = params[0].item()
         momentum = params[1].item()
         

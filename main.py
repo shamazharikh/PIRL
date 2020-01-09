@@ -71,12 +71,6 @@ parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
 parser.add_argument('--low-dim', default=128, type=int,
                     metavar='D', help='feature dimension')
-parser.add_argument('--nce-k', default=4096, type=int,
-                    metavar='K', help='number of negative samples for NCE')
-parser.add_argument('--nce-t', default=0.07, type=float, 
-                    metavar='T', help='temperature parameter for softmax')
-parser.add_argument('--nce-m', default=0.5, type=float,
-                    help='momentum for non-parametric updates')
 parser.add_argument('--loss_lambda', default=0.1, type=float,
                     help='weight of NCE for transformed input')
 parser.add_argument('--iter_size', default=1, type=int,
@@ -230,14 +224,13 @@ def main():
         model.cuda()
         model = torch.nn.parallel.DistributedDataParallel(model)
 
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                      std=[1.0, 1.0, 1.0])
 
     train_dataset = datasets.MNISTInstance(
-        traindir,
-        transforms.Compose([
+        root=args.data,
+        download=True,
+        transform=transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.2,1.)),
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
@@ -256,22 +249,21 @@ def main():
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
-    valloader = torch.utils.data.DataLoader(
-        datasets.MNISTInstance(valdir, transforms.Compose([
+    val_dataset = datasets.MNISTInstance(
+        root=data_dir, 
+        download=True,
+        transform=transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             JigSaw((3, 3)),
             normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
+        ]))
+    valloader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True
     )
 
     ndata = train_dataset.__len__()
-    # if args.nce_k > 0:
-    #     lemniscate = NCEAverage(args.low_dim, ndata, args.nce_k, args.nce_t, args.nce_m).cuda()
-    #     criterion = NCECriterion(ndata).cuda()
-    # else:
     memorybank = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
     criterion = PIRLLoss(loss_lambda=args.loss_lambda).cuda()
 

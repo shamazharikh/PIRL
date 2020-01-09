@@ -15,9 +15,9 @@ class MNISTInstance(datasets.MNIST):
             tuple: (image, target) where target is index of the target class.
         """
         if self.train:
-            img, target = self.train_data[index], self.train_labels[index]
+            img = self.train_data[index]
         else:
-            img, target = self.test_data[index], self.test_labels[index]
+            img = self.test_data[index]
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
@@ -25,4 +25,4 @@ class MNISTInstance(datasets.MNIST):
 
         if self.transform is not None:
             img, transformed_image, _ = self.transform(img)
-        return img, transformed_img, index 
+        return img, transformed_image, index 

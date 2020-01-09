@@ -10,10 +10,10 @@ class ImageFolderInstance(datasets.ImageFolder):
         Returns:
             tuple: (image, target) where target is class_index of the target class.
         """
-        path, target = self.imgs[index]
+        path, _ = self.imgs[index]
         img = self.loader(path)
         if self.transform is not None:
             img, transformed_image, _ = self.transform(img)
-        return img, transformed_img, index 
+        return img, transformed_image, index 
 
 
