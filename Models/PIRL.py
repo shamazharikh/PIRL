@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 
 from .FeatureExtractor import IntermediateLayerGetter
@@ -30,7 +31,8 @@ class PIRLModel(nn.Module):
         image_activations = self.ILG.activations[self.layer_names[0]]
         image_features = self.GeneralRepresentation(image_activations)
         
-        if transformed_image:
+        if not transformed_image is None:
+            transformed_image = torch.cat([*transformed_image], dim=0) #Collapsing batch and patch dimensions
             _ = self.net(transformed_image)
             image_activations = self.ILG.activations[self.layer_names[0]]
             transformed_image_features = self.Jigsaw(image_activations)
@@ -46,6 +48,10 @@ class PIRLLoss(nn.Module):
         self.l2 = torch.nn.CrossEntropyLoss()
     
     def forward(self, transformed_output, output, index):
-        return self.loss_lambda * self.l1(transformed_output, index) + \
-            (1 - self.loss_lambda) * self.l2(output, index)
+        l1 = F.cross_entropy(transformed_output, index)
+        l2 = F.cross_entropy(output, index)
+        print(l1, l2)
+        total = self.loss_lambda *  l1 + (1 - self.loss_lambda) * l2
+        print(total)
+        return total
         

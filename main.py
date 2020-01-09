@@ -33,6 +33,8 @@ parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
 parser.add_argument('--download', action='store_true', 
                     help='Flag to download data')
+parser.add_argument('--jigsaw_size', type=int, default=2, 
+                    help='Size of Jigsaw grid') 
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -44,7 +46,7 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=2, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
 parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
                     metavar='LR', help='initial learning rate')
@@ -71,7 +73,7 @@ parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
-parser.add_argument('--low-dim', default=128, type=int,
+parser.add_argument('--low-dim', default=32, type=int,
                     metavar='D', help='feature dimension')
 parser.add_argument('--nce-t', default=0.07, type=float, 
                     metavar='T', help='temperature parameter for softmax')
@@ -99,8 +101,10 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         # compute output
         image_features, transformed_image_features = model(image, transformed_image)
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
-        loss = (criterion(output, index) + criterion(transformed_output, index)) / args.iter_size
-
+        
+        print(transformed_output.size(), output.size(), index)
+        loss = criterion(transformed_output, output, index) / args.iter_size
+        print(loss)
         loss.backward()
         # measure accuracy and record loss
         losses.update(loss.item() * args.iter_size, image.size(0))
@@ -219,10 +223,13 @@ def main():
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = PIRLModel(args.arch)
+        model = PIRLModel(args.arch, encoding_size=args.low_dim, 
+                jigsaw_size=(args.jigsaw_size, args.jigsaw_size)
+            )
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = PIRLModel(args.arch, pretrained=False)
+        model = PIRLModel(args.arch, pretrained=False, encoding_size=args.low_dim,
+        jigsaw_size=(args.jigsaw_size, args.jigsaw_size))
     
     if not args.distributed:
         model = torch.nn.DataParallel(model).cuda()
@@ -238,14 +245,14 @@ def main():
         download=args.download,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.RandomResizedCrop(224, scale=(0.2,1.)),
+            transforms.RandomResizedCrop(64, scale=(0.2,1.)),
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
             Rotate(return_image=False),
             transforms.ToTensor(),
             normalize,
-            JigSaw((3, 3))
+            JigSaw((args.jigsaw_size, args.jigsaw_size))
         ]))
     
     if args.distributed:
@@ -262,11 +269,11 @@ def main():
         download=args.download,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.Resize(70),
+            transforms.CenterCrop(64),
             transforms.ToTensor(),
             normalize,
-            JigSaw((3, 3)),
+            JigSaw((args.jigsaw_size, args.jigsaw_size)),
         ]))
     valloader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
@@ -275,8 +282,8 @@ def main():
 
     ndata = train_dataset.__len__()
     memorybank = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
-    criterion = PIRLLoss(loss_lambda=args.loss_lambda).cuda()
-
+    train_criterion = PIRLLoss(loss_lambda=args.loss_lambda).cuda()
+    val_criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -308,10 +315,10 @@ def main():
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(epoch, model, memorybank, criterion, trainloader, optimizer)
+        train(epoch, model, memorybank, train_criterion, trainloader, optimizer)
 
         # evaluate on validation set
-        _ = validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=args.recompute)
+        _ = validate(epoch, model, memorybank, val_criterion, trainloader, valloader, recompute_memory=args.recompute)
 
         # remember best prec@1 and save checkpoint
         # is_best = accuracy > best_accuracy

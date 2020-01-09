@@ -10,8 +10,8 @@ class JigSaw(object):
     def __call__(self, img):
         assert isinstance(img, torch.Tensor) 
         transformed_image = img
-        self.patch_size_1 = transformed_image.size[1] // self.n_patches[0] 
-        self.patch_size_2 = transformed_image.size[0] // self.n_patches[1] 
+        self.patch_size_1 = transformed_image.size(1) // self.n_patches[0] 
+        self.patch_size_2 = transformed_image.size(2) // self.n_patches[1] 
 
         transformed_image = transformed_image.unfold(1, self.patch_size_1, self.patch_size_1).unfold(2, self.patch_size_2, self.patch_size_2)
         transformed_image = transformed_image.permute([1, 2, 0, 3, 4]).contiguous()

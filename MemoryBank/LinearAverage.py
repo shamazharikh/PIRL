@@ -24,18 +24,21 @@ class LinearAverageOp(Function):
         return out_trans_features, out_features, out_similarity
 
     @staticmethod
-    def backward(self, gradOutput):
-        features, _, memory, indices, params = self.saved_tensors
+    def backward(self, grad_trans_output, grad_output, grad_output_sim):
+        features, transformed_features, memory, indices, params = self.saved_tensors
         T = params[0].item()
         momentum = params[1].item()
         
         # add temperature
-        gradOutput.data.div_(T)
+        grad_trans_output.data.div_(T)
+        grad_output.data.div_(T)
 
         # gradient of linear
-        gradInput = torch.mm(gradOutput.data, memory)
-        gradInput.resize_as_(features)
+        grad_output = torch.mm(grad_output.data, memory)
+        grad_output.resize_as_(features)
 
+        grad_trans_output = torch.mm(grad_trans_output, memory)
+        grad_trans_output.resize_as_(transformed_features)
         # update the non-parametric data
         weight_pos = memory.index_select(0, indices.data.view(-1)).resize_as_(features)
         weight_pos.mul_(momentum)
@@ -44,7 +47,7 @@ class LinearAverageOp(Function):
         updated_weight = weight_pos.div(w_norm)
         memory.index_copy_(0, indices, updated_weight)
         
-        return gradInput, None, None, None
+        return grad_output, grad_trans_output, None, None, None
 
 class LinearAverage(nn.Module):
 

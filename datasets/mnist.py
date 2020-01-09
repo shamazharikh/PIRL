@@ -24,5 +24,5 @@ class MNISTInstance(datasets.MNIST):
         img = Image.fromarray(img.numpy(), mode='L')
 
         if self.transform is not None:
-            img, transformed_image, _ = self.transform(img)
+            img, transformed_image = self.transform(img)
         return img, transformed_image, index 
