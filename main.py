@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 
 import datasets
-from transforms import *
+from transforms import JigSaw, Rotate
 from Models.PIRL import PIRLModel, PIRLLoss
 from utils import AverageMeter
 from MemoryBank.LinearAverage import LinearAverage
@@ -92,18 +92,18 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
 
     end = time.time()
     optimizer.zero_grad()
-    for i, (img, transformed_img, index) in enumerate(train_loader):
+    for i, (image, transformed_image, index) in enumerate(trainloader):
         data_time.update(time.time() - end)
         index = index.cuda(non_blocking=True)
 
         # compute output
-        image_features, transformed_image_features = model(image, transform_image)
+        image_features, transformed_image_features = model(image, transformed_image)
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
         loss = (criterion(output, index) + criterion(transformed_output, index)) / args.iter_size
 
         loss.backward()
         # measure accuracy and record loss
-        losses.update(loss.item() * args.iter_size, input.size(0))
+        losses.update(loss.item() * args.iter_size, image.size(0))
         if (i+1) % args.iter_size == 0:
             # compute gradient and do SGD step
             optimizer.step()
@@ -118,7 +118,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
+                   epoch, i, len(trainloader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
 
 def validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=0):
@@ -128,29 +128,30 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
     losses = AverageMeter()
     correct = 0.
     total = 0
-    testsize = testloader.dataset.__len__()
+    testsize = valloader.dataset.__len__()
     trainFeatures = memorybank.memory.t()
     if recompute_memory:
         transform_backup = trainloader.dataset.transform
-        trainloader.dataset.transform = testloader.dataset.transform
+        trainloader.dataset.transform = valloader.dataset.transform
         temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
-        for batch_idx, (image, transformed_image, index) in enumerate(temploader):
+        for batch_idx, (images, _, index) in enumerate(temploader):
             index = index.cuda(non_blocking=True)
-            batchSize = i.size(0)
+            batchSize = images.size(0)
             features = model(images)
             trainFeatures[:, batch_idx*batchSize:batch_idx*batchSize+batchSize] = features.data.t()
-        trainloader.dataset.transform = transform_bak
+        trainloader.dataset.transform = transform_backup
     
     end = time.time()
     with torch.no_grad():
-        for batch_idx, (images, transformed_images, indexes) in enumerate(testloader):
+        for batch_idx, (images, transformed_images, indexes) in enumerate(valloader):
             indexes = indexes.cuda(non_blocking=True)
             batchSize = images.size(0)
             targets = torch.zeros(batchSize, dtype=torch.long)
             features, transformed_features = model(images, transformed_images)
-            transformed_output, output, output_similarity = memorybank(features, transformed_features)
+            transformed_output, _, output_similarity = memorybank(features, transformed_features)
             similarity_vectors = torch.cat([output_similarity, transformed_output], dim=-1)
             val_loss = criterion(similarity_vectors, targets)
+            losses.update(val_loss.item(), batchSize)
             net_time.update(time.time() - end)
             end = time.time()
 
@@ -251,11 +252,11 @@ def main():
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(
+    trainloader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
-    val_loader = torch.utils.data.DataLoader(
+    valloader = torch.utils.data.DataLoader(
         datasets.MNISTInstance(valdir, transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -286,7 +287,7 @@ def main():
             args.start_epoch = checkpoint['epoch']
             # best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
-            lemniscate = checkpoint['memorybank']
+            memorybank = checkpoint['memorybank']
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
@@ -308,7 +309,7 @@ def main():
         train(epoch, model, memorybank, criterion, trainloader, optimizer)
 
         # evaluate on validation set
-        accuracy = validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=args.recompute)
+        _ = validate(epoch, model, memorybank, criterion, trainloader, valloader, recompute_memory=args.recompute)
 
         # remember best prec@1 and save checkpoint
         # is_best = accuracy > best_accuracy
