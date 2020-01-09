@@ -235,13 +235,15 @@ def main():
 
     train_dataset = datasets.MNISTInstance(
         root=args.data,
-        download=True,
+        download=args.download,
         transform=transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
             transforms.RandomResizedCrop(224, scale=(0.2,1.)),
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
             Rotate(return_image=False),
+            transforms.ToTensor(),
             normalize,
             JigSaw((3, 3))
         ]))
@@ -257,12 +259,14 @@ def main():
 
     val_dataset = datasets.MNISTInstance(
         root=args.data, 
-        download=True,
+        download=args.download,
         transform=transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
             transforms.Resize(256),
             transforms.CenterCrop(224),
-            JigSaw((3, 3)),
+            transforms.ToTensor(),
             normalize,
+            JigSaw((3, 3)),
         ]))
     valloader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,

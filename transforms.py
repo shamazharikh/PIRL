@@ -18,7 +18,7 @@ class JigSaw(object):
         transformed_image = transformed_image.view([-1, transformed_image.shape[2], transformed_image.shape[3], transformed_image.shape[4]])
         rand_perm = torch.randperm(transformed_image.shape[0])
         transformed_image = transformed_image[rand_perm]
-        return img, transformed_image, rand_perm
+        return img, transformed_image
         
 class Rotate(object):
     def __init__(self, num_positions=4, return_image=False):
@@ -29,11 +29,9 @@ class Rotate(object):
         image = img
         ind = torch.randint(self.degrees.shape[0], (1,))
         angle = self.degrees[ind]
-        if angle == 0. :
-            return img, image, ind
         if self.return_image:
-            return img, F.rotate(image, angle), ind
-        return F.rotate(image, angle), ind
+            return img, F.rotate(image, angle)
+        return F.rotate(image, angle)
 
 
 
