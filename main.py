@@ -71,6 +71,8 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
 parser.add_argument('--world-size', default=1, type=int,
                     help='number of distributed processes')
+parser.add_argument('--distributed', action='store_true',
+                    help='Flag to distributed data parallel')
 parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='gloo', type=str,
@@ -98,8 +100,8 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
     optimizer.zero_grad()
     for i, (image, transformed_image, index) in enumerate(tqdm(trainloader)):
         data_time.update(time.time() - end)
-        index = index.cuda(non_blocking=True)
-
+        # index = index.cuda(non_blocking=True)
+        
         # compute output
         image_features, transformed_image_features = model(image, transformed_image)
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
