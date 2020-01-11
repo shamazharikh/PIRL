@@ -102,9 +102,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         image_features, transformed_image_features = model(image, transformed_image)
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
         
-        print(transformed_output.size(), output.size(), index)
         loss = criterion(transformed_output, output, index) / args.iter_size
-        print(loss)
         loss.backward()
         # measure accuracy and record loss
         losses.update(loss.item() * args.iter_size, image.size(0))
@@ -243,6 +241,7 @@ def main():
     train_dataset = datasets.MNISTInstance(
         root=args.data,
         download=args.download,
+        train=True,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomResizedCrop(64, scale=(0.2,1.)),
@@ -267,6 +266,7 @@ def main():
     val_dataset = datasets.MNISTInstance(
         root=args.data, 
         download=args.download,
+        train=False,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(70),

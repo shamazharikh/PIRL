@@ -8,7 +8,8 @@ from .TaskNetworks import JigsawTask, GenericTask
 
 Model_Dict ={
     'resnet': ['layer4'],
-    'densenet': ['features']
+    'densenet': ['features'],
+    'shufflenet': ['conv5']
 }
 
 class PIRLModel(nn.Module):
@@ -50,8 +51,6 @@ class PIRLLoss(nn.Module):
     def forward(self, transformed_output, output, index):
         l1 = F.cross_entropy(transformed_output, index)
         l2 = F.cross_entropy(output, index)
-        print(l1, l2)
         total = self.loss_lambda *  l1 + (1 - self.loss_lambda) * l2
-        print(total)
         return total
         
