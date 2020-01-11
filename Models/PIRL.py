@@ -38,7 +38,6 @@ class PIRLModel(nn.Module):
             _ = self.net(transformed_image)
             image_activations = self.ILG.activations[self.layer_names[0]][transformed_image.get_device()]
             transformed_image_features = self.Jigsaw(image_activations)
-            print(transformed_image_features.size(), image_features.size())
             return image_features, transformed_image_features
         else:
             return image_features

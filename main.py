@@ -108,8 +108,6 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         
         loss = criterion(transformed_output, output, index) / args.iter_size
         loss.backward()
-        import pdb
-        pdb.set_trace()
 
         # measure accuracy and record loss
         losses.update(loss.item() * args.iter_size, image.size(0))

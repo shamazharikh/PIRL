@@ -17,7 +17,6 @@ class LinearAverageOp(Function):
         out_trans_features.div_(T) # batchSize * N
         
         # inner product for input similarity
-        print(features.data.size(), transformed_features.data.size())
         out_similarity = (features.data * transformed_features.data).sum(dim=-1, keepdim=True)
         out_trans_features.div_(T) # batchSize 
         self.save_for_backward(features, transformed_features, memory, indices, params)
