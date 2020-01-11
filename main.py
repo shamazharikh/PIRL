@@ -178,18 +178,20 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
 
     return correct/total
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def create_save_dir(arch):
     save_dir = './save_dir'
     os.makedirs(save_dir, exist_ok=True)
-    save_dir = os.path.join(save_dir, state['arch'])
+    save_dir = os.path.join(save_dir, arch)
     os.makedirs(save_dir, exist_ok=True)
     x = datetime.datetime.now()
     save_dir = os.path.join(save_dir, x.strftime("%y_%m_%d"))
     os.makedirs(save_dir, exist_ok=True)
-    max_exp = max([int(folder.split('exp')[-1]) for filename in glob.glob(os.path.join(save_dir, 'exp_*'))]+[0,])
+    max_exp = max([int(filename.split('exp_')[-1]) for filename in glob.glob(os.path.join(save_dir, 'exp_*'))]+[0,])
     save_dir = os.path.join(save_dir, 'exp_{}'.format(max_exp+1))
     os.makedirs(save_dir, exist_ok=True)
-    
+    return save_dir
+
+def save_checkpoint(state, is_best, save_dir):
     filename = os.path.join(save_dir,'checkpoint.pth.tar')
     best_filename = os.path.join(save_dir,'model_best.pth.tar')
     torch.save(state, filename)
@@ -308,6 +310,8 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
+    save_dir = create_save_dir(args.arch)
+
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -352,7 +356,7 @@ def main():
                 'memorybank': memorybank,
                 'optimizer' : optimizer.state_dict(),
                 'args':args
-            }, is_best)
+            }, is_best, save_dir)
             
     # # evaluate KNN after last epoch
     # kNN(0, model, lemniscate, train_loader, val_loader, 200, args.nce_t)
