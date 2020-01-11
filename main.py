@@ -104,6 +104,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         
         # compute output
         image_features, transformed_image_features = model(image, transformed_image)
+        torch.cuda.synchronize()
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
         
         loss = criterion(transformed_output, output, index) / args.iter_size

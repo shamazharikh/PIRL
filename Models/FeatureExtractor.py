@@ -7,15 +7,12 @@ class IntermediateLayerGetter(nn.Module):
         super(IntermediateLayerGetter, self).__init__()
         self.activations = {}
         self.output_sizes = {}
-        self.num_calls = 0
         for name, module in net.named_modules():
             if name in return_layers:
                 module.register_forward_hook(self.get_hook(name))
 
     def get_hook(self, name):
         def hook(module, input, output):
-            print("inside the hook ......", self.num_calls, "times", output.get_device())
-            self.num_calls += 1
             device = output.get_device()
             self.activations.setdefault(name, {}).setdefault(device, output)   
             self.output_sizes[name] = output.size(1)
