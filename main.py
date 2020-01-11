@@ -186,8 +186,8 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     x = datetime.datetime.now()
     save_dir = os.path.join(save_dir, x.strftime("%y_%m_%d"))
     os.makedirs(save_dir, exist_ok=True)
-    max_exp = max([int(folder.split('exp')[-1]) for filename in glob.glob(os.path.join(save_dir, 'exp_*'))])
-    save_dir = os.path.join(save_dir, 'exp_{}'.format(max_exp))
+    max_exp = max([int(folder.split('exp')[-1]) for filename in glob.glob(os.path.join(save_dir, 'exp_*'))]+[0,])
+    save_dir = os.path.join(save_dir, 'exp_{}'.format(max_exp+1))
     os.makedirs(save_dir, exist_ok=True)
     
     filename = os.path.join(save_dir,'checkpoint.pth.tar')
