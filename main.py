@@ -100,11 +100,10 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
     optimizer.zero_grad()
     for i, (image, transformed_image, index) in enumerate(tqdm(trainloader)):
         data_time.update(time.time() - end)
-        # index = index.cuda(non_blocking=True)
+        index = index.cuda(non_blocking=True)
         
         # compute output
         image_features, transformed_image_features = model(image, transformed_image)
-        torch.cuda.synchronize()
         transformed_output, output, _ = memorybank(image_features, transformed_image_features, index)
         
         loss = criterion(transformed_output, output, index) / args.iter_size
@@ -238,8 +237,7 @@ def main():
         jigsaw_size=(args.jigsaw_size, args.jigsaw_size))
     
     if not args.distributed:
-        # model = torch.nn.DataParallel(model).cuda()
-        pass
+        model = torch.nn.DataParallel(model).cuda()
     else:
         model.cuda()
         model = torch.nn.parallel.DistributedDataParallel(model)

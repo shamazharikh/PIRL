@@ -14,6 +14,6 @@ class IntermediateLayerGetter(object):
     def get_hook(self, name):
         def hook(module, input, output):
             device = output.get_device()
-            self.activations.setdefault(name, {}).setdefault(device, output)   
+            self.activations.setdefault(name, {})[device] = output   
             self.output_sizes[name] = output.size(1)
         return hook
