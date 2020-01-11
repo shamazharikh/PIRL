@@ -39,6 +39,7 @@ class LinearAverageOp(Function):
 
         grad_trans_output = torch.mm(grad_trans_output, memory)
         grad_trans_output.resize_as_(transformed_features)
+        
         # update the non-parametric data
         weight_pos = memory.index_select(0, indices.data.view(-1)).resize_as_(features)
         weight_pos.mul_(momentum)
