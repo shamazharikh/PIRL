@@ -238,7 +238,8 @@ def main():
         jigsaw_size=(args.jigsaw_size, args.jigsaw_size))
     
     if not args.distributed:
-        model = torch.nn.DataParallel(model).cuda()
+        # model = torch.nn.DataParallel(model).cuda()
+        pass
     else:
         model.cuda()
         model = torch.nn.parallel.DistributedDataParallel(model)
