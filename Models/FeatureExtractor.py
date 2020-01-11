@@ -16,6 +16,7 @@ class IntermediateLayerGetter(nn.Module):
         def hook(module, input, output):
             print("inside the hook ......", self.num_calls, "times", output.get_device())
             self.num_calls += 1
-            self.activations[name] = output
+            device = output.get_device()
+            self.activations.setdefault(name, {}).setdefault(device, output)   
             self.output_sizes[name] = output.size(1)
         return hook
