@@ -4,6 +4,8 @@ import sys
 import shutil
 import time
 
+from tqdm import tqdm
+
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -94,7 +96,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
 
     end = time.time()
     optimizer.zero_grad()
-    for i, (image, transformed_image, index) in enumerate(trainloader):
+    for i, (image, transformed_image, index) in enumerate(tqdm(trainloader)):
         data_time.update(time.time() - end)
         index = index.cuda(non_blocking=True)
 
@@ -104,6 +106,9 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         
         loss = criterion(transformed_output, output, index) / args.iter_size
         loss.backward()
+        import pdb
+        pdb.set_trace()
+
         # measure accuracy and record loss
         losses.update(loss.item() * args.iter_size, image.size(0))
         if (i+1) % args.iter_size == 0:
@@ -116,7 +121,7 @@ def train(epoch, model, memorybank, criterion, trainloader, optimizer):
         end = time.time()
 
         if i % args.print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
+            tqdm.write('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(
@@ -148,9 +153,9 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
         for batch_idx, (images, transformed_images, indexes) in enumerate(valloader):
             indexes = indexes.cuda(non_blocking=True)
             batchSize = images.size(0)
-            targets = torch.zeros(batchSize, dtype=torch.long)
+            targets = torch.zeros(batchSize, dtype=torch.long).cuda(non_blocking=True)
             features, transformed_features = model(images, transformed_images)
-            transformed_output, _, output_similarity = memorybank(features, transformed_features)
+            transformed_output, _, output_similarity = memorybank(features, transformed_features, indexes)
             similarity_vectors = torch.cat([output_similarity, transformed_output], dim=-1)
             val_loss = criterion(similarity_vectors, targets)
             losses.update(val_loss.item(), batchSize)
@@ -305,9 +310,9 @@ def main():
 
     cudnn.benchmark = True
 
-    # if args.evaluate:
-    #     kNN(0, model, lemniscate, train_loader, val_loader, 200, args.nce_t)
-    #     return
+    if args.evaluate:
+        validate(epoch, model, memorybank, val_criterion, trainloader, valloader, recompute_memory=args.recompute)
+        return
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:

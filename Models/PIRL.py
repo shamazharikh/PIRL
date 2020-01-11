@@ -30,10 +30,14 @@ class PIRLModel(nn.Module):
     def forward(self, image, transformed_image=None):
         _ = self.net(image)
         image_activations = self.ILG.activations[self.layer_names[0]]
+        print(image.get_device(), image_activations.get_device())
         image_features = self.GeneralRepresentation(image_activations)
         
         if not transformed_image is None:
-            transformed_image = torch.cat([*transformed_image], dim=0) #Collapsing batch and patch dimensions
+            print(transformed_image.get_device())
+            transformed_image = torch.cat([*transformed_image], dim=0)
+            print(transformed_image.get_device())
+            #Collapsing batch and patch dimensions
             _ = self.net(transformed_image)
             image_activations = self.ILG.activations[self.layer_names[0]]
             transformed_image_features = self.Jigsaw(image_activations)
