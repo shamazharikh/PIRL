@@ -243,6 +243,7 @@ def main():
     train_dataset = datasets.MNISTInstance(
         root=args.data,
         download=args.download,
+        train=True,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomResizedCrop(64, scale=(0.2,1.)),
@@ -267,6 +268,7 @@ def main():
     val_dataset = datasets.MNISTInstance(
         root=args.data, 
         download=args.download,
+        train=False,
         transform=transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(70),

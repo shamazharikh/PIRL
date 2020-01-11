@@ -10,6 +10,7 @@ class LinearAverageOp(Function):
 
         # inner product
         out_features = torch.mm(features.data, memory.t())
+
         out_features.div_(T) # batchSize * N
         
         # inner product
