@@ -3,6 +3,8 @@ import os
 import sys
 import shutil
 import time
+import datetime
+import glob
 
 from tqdm import tqdm
 
@@ -177,9 +179,22 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
     return correct/total
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    save_dir = './save_dir'
+    os.makedirs(save_dir, exist_ok=True)
+    save_dir = os.path.join(save_dir, state['arch'])
+    os.makedirs(save_dir, exist_ok=True)
+    x = datetime.datetime.now()
+    save_dir = os.path.join(save_dir, x.strftime("%y_%m_%d"))
+    os.makedirs(save_dir, exist_ok=True)
+    max_exp = max([int(folder.split('exp')[-1]) for filename in glob.glob(os.path.join(save_dir, 'exp_*'))])
+    save_dir = os.path.join(save_dir, 'exp_{}'.format(max_exp))
+    os.makedirs(save_dir, exist_ok=True)
+    
+    filename = os.path.join(save_dir,'checkpoint.pth.tar')
+    best_filename = os.path.join(save_dir,'model_best.pth.tar')
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, best_filename)
 
 
 def adjust_learning_rate(optimizer, epoch):
@@ -323,11 +338,12 @@ def main():
         train(epoch, model, memorybank, train_criterion, trainloader, optimizer)
 
         # evaluate on validation set
-        _ = validate(epoch, model, memorybank, val_criterion, trainloader, valloader, recompute_memory=args.recompute)
+        accuracy = validate(epoch, model, memorybank, val_criterion, trainloader, valloader, recompute_memory=args.recompute)
 
         # remember best prec@1 and save checkpoint
-        # is_best = accuracy > best_accuracy
-        # best_prec1 = max(accuracy, best_accuracy)
+        is_best = accuracy > best_prec1
+        best_prec1 = max(accuracy, best_prec1)
+        
         if epoch % args.save_freq == 0:
             save_checkpoint({
                 'epoch': epoch + 1,
@@ -335,7 +351,8 @@ def main():
                 'state_dict': model.state_dict(),
                 'memorybank': memorybank,
                 'optimizer' : optimizer.state_dict(),
-            }, epoch+1)
+                'args':args
+            }, is_best)
             
     # # evaluate KNN after last epoch
     # kNN(0, model, lemniscate, train_loader, val_loader, 200, args.nce_t)
