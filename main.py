@@ -135,6 +135,8 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
     net_time = AverageMeter()
     cls_time = AverageMeter()
     losses = AverageMeter()
+    accuracy_ks = (1, 10, 100, 1000)
+    accuracies = {k:AverageMeter() for k in accuracy_ks}
     correct = 0.
     total = 0
     testsize = valloader.dataset.__len__()
@@ -163,9 +165,14 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
             losses.update(val_loss.item(), batchSize)
             net_time.update(time.time() - end)
             end = time.time()
-
+            
+            pred = similarity_vectors.argmax(dim=-1)
+            res = accuracy(similarity_vectors, targets, topk=accuracy_ks)
+            for res, k in zip(res, accuracy_ks):
+                accuracies[k].update(res, batchSize) 
+            
             total += targets.size(0)
-            correct += similarity_vectors.argmax(dim=-1).eq(targets.data).sum().item()
+            correct += pred.eq(targets.data).sum().item()
             
             cls_time.update(time.time() - end)
             end = time.time()
@@ -175,7 +182,8 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
                   'Cls Time {cls_time.val:.3f} ({cls_time.avg:.3f})\t'
                   'Top1: {:.2f}'.format(
                   total, testsize, correct*100./total, net_time=net_time, cls_time=cls_time))
-
+    for k in accuracy_ks:
+        print("Top-{} accuracy: {}".format(k, accuracies[k].avg))
     return correct/total
 
 def create_save_dir(arch):
@@ -318,7 +326,6 @@ def main():
             print("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
-            # best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             memorybank = checkpoint['memorybank']
             optimizer.load_state_dict(checkpoint['optimizer'])
