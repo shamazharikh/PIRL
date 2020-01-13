@@ -142,10 +142,11 @@ def validate(epoch, model, memorybank, criterion, trainloader, valloader, recomp
     testsize = valloader.dataset.__len__()
     trainFeatures = memorybank.memory.t()
     if recompute_memory:
+        print("Recomputing memorybank")
         transform_backup = trainloader.dataset.transform
         trainloader.dataset.transform = valloader.dataset.transform
         temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
-        for batch_idx, (images, _, index) in enumerate(temploader):
+        for batch_idx, (images, _, index) in enumerate(tqdm(temploader)):
             index = index.cuda(non_blocking=True)
             batchSize = images.size(0)
             features = model(images)
